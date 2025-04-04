@@ -298,31 +298,12 @@ class RecToolsDIRCuPy(RecToolsDIR):
         # FBP filtering output
         tmp_p = xp.empty(data.shape, dtype=xp.float32)
         
-        # Calculate the number of chunks
-        available_memory = self._get_available_gpu_memory()
-        # print(available_memory)
-
-        slice_size = data.shape[2] * data.shape[1] * xp.float32().itemsize + (data.shape[2] + padding_m * 2) * data.shape[1] * xp.float32().itemsize
-        max_slices = available_memory / slice_size
-        chunk_count = int(xp.ceil(nz / max_slices))
-        slices_per_chunk = int(xp.ceil(nz / chunk_count))
-
-
-        # print(data.shape[2] + padding_m * 2) 
-        # print(xp.float32().itemsize)
-        # print(slice_size)
-        # print(max_slices)
-        # print(chunk_count)
-
-        # Loop over the chunks
-        for chunk_index in range(0, chunk_count):
-            start_index = chunk_index * slices_per_chunk
-            end_index   = min((chunk_index + 1) * slices_per_chunk, nz)
-            tmp = xp.pad(data[start_index:end_index, :, :], ((0, 0), (0, 0), (padding_m, padding_m)), mode="edge")
-            tmp = irfft(w * rfft(tmp, axis=2), axis=2)
-            tmp_p[start_index:end_index, :, :] = tmp[:, :, padding_m:padding_p]
-            del tmp
-
+        # I remember the bellow part may use a lot of memory due to "w*" operation,
+        # if so you can do it as a loop over slices/angles
+        tmp = xp.pad(data, ((0, 0), (0, 0), (padding_m, padding_m)), mode="edge")
+        tmp = irfft(w * rfft(tmp, axis=2), axis=2)
+        tmp_p = tmp[:, :, padding_m:padding_p]
+        del tmp
 
         # BACKPROJECTION
         # !work with complex numbers by setting a half of the array as real and another half as imag
