@@ -361,21 +361,8 @@ class RecToolsDIRCuPy(RecToolsDIR):
                     ),
                 )
 
-            gather_kernel_center_prune_arctan(
-                (int(xp.ceil(center_size / 256)), center_size, 1),
-                (256, 1, 1),
-                (
-                    angle_range,
-                    theta,
-                    np.int32(m),
-                    np.int32(center_size),
-                    np.int32(n),
-                    np.int32(nproj),
-                ),
-            )
-
             gather_kernel_center_prune(
-                grid=(1, int(xp.ceil(center_size / 8)), 4*m),
+                grid=( 1, int(xp.ceil(center_size / 8)), center_size),
                 block=(32, 8, 1),
                 args=(
                     angle_range,
@@ -383,22 +370,7 @@ class RecToolsDIRCuPy(RecToolsDIR):
                     np.int32(m),
                     np.int32(center_size),
                     np.int32(center_size),
-                    np.int32(4*m),
-                    np.int32(n),
-                    np.int32(nproj),
-                )
-            )
-
-            gather_kernel_center_prune(
-                grid=(1, 8, 64),
-                block=(32, 8, 1),
-                args=(
-                    angle_range,
-                    theta,
-                    np.int32(m),
                     np.int32(center_size),
-                    np.int32(64),
-                    np.int32(64),
                     np.int32(n),
                     np.int32(nproj),
                 )
