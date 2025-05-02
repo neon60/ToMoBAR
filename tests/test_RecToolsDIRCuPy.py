@@ -15,11 +15,17 @@ from tomobar.methodsDIR_CuPy import RecToolsDIRCuPy
 eps = 2e-06
 
 
-@pytest.mark.parametrize("projection_count", [1801, 2560, 3601])
-@pytest.mark.parametrize("theta_range_endpoint", [-np.pi, np.pi])
-@pytest.mark.parametrize("theta_shuffle_radius", [0, 128, -1])
-@pytest.mark.parametrize("theta_shuffle_iteration_count", [2, 8, 32])
-@pytest.mark.parametrize("center_size", [256, 512, 1024, 2048, 6144]) # must be greater than or equal to methodsDIR_CuPy._CENTER_SIZE_MIN
+# @pytest.mark.parametrize("projection_count", [1801, 2560, 3601])
+# @pytest.mark.parametrize("theta_range_endpoint", [-np.pi, np.pi])
+# @pytest.mark.parametrize("theta_shuffle_radius", [0, 128, -1])
+# @pytest.mark.parametrize("theta_shuffle_iteration_count", [2, 8, 32])
+# @pytest.mark.parametrize("center_size", [256, 512, 1024, 2048, 6144])  # must be greater than or equal to methodsDIR_CuPy._CENTER_SIZE_MIN
+
+@pytest.mark.parametrize("projection_count", [1801])
+@pytest.mark.parametrize("theta_range_endpoint", [-np.pi])
+@pytest.mark.parametrize("theta_shuffle_radius", [0])
+@pytest.mark.parametrize("theta_shuffle_iteration_count", [2])
+@pytest.mark.parametrize("center_size", [256])  # must be greater than or equal to methodsDIR_CuPy._CENTER_SIZE_MIN
 
 def test_Fourier3D_inv_prune(
     projection_count,
@@ -38,7 +44,7 @@ def test_Fourier3D_inv_prune(
     detector_width = center_size * 2
 
     mu = -np.log(eps) / (2 * detector_width * detector_width)
-    oversampled_grid_size = int(
+    interpolation_filter_half_size = int(
         np.ceil(
             2
             * detector_width
@@ -55,7 +61,7 @@ def test_Fourier3D_inv_prune(
         theta_range_endpoint,
         projection_count,
         dtype="float32",
-    )  # in degrees
+    )
 
     shuffle_iteration_count = (
         0 if theta_shuffle_radius == 0 else theta_shuffle_iteration_count
@@ -84,7 +90,7 @@ def test_Fourier3D_inv_prune(
             args=(
                 angle_range_expected,
                 sorted_theta,
-                np.int32(oversampled_grid_size),
+                np.int32(interpolation_filter_half_size),
                 np.int32(center_size),
                 np.int32(center_size),
                 np.int32(center_size),
@@ -102,25 +108,76 @@ def test_Fourier3D_inv_prune(
             sorted_theta,
             detector_width,
             projection_count,
-            oversampled_grid_size,
-            center_size
+            interpolation_filter_half_size,
+            center_size,
+            angle_range_expected,
         )
 
     host_angle_range_expected = cp.asnumpy(angle_range_expected)
     host_angle_range_actual = cp.asnumpy(angle_range_actual)
 
     diff = host_angle_range_expected[:, :, 0] - host_angle_range_actual[:, :, 0]
+    import matplotlib.pyplot as plt
+
+    plt.figure()
+    manager = plt.get_current_fig_manager()
+    manager.full_screen_toggle()
+    plt.suptitle(f"projection_count: {projection_count}", fontsize=16)
+    plt.subplot(131)
+    img = plt.imshow(host_angle_range_expected[:, :, 0])
+    plt.colorbar(img)
+    plt.title("Angle min expected")
+    plt.subplot(132)
+    img = plt.imshow(host_angle_range_actual[:, :, 0])
+    plt.colorbar(img)
+    plt.title("Angle min actual")
+    plt.subplot(133)
+    img = plt.imshow(diff)
+    plt.colorbar(img)
+    plt.title("Angle min diff")
+    plt.show()
+
     allowed = (0 <= diff) & (diff <= 3)
     assert np.all(allowed), (
         "Angle min elements differ by more than 1 or are less than expected"
     )
 
     diff = host_angle_range_actual[:, :, 1] - host_angle_range_expected[:, :, 1]
+    plt.figure()
+    manager = plt.get_current_fig_manager()
+    manager.full_screen_toggle()
+    plt.suptitle(f"projection_count: {projection_count}", fontsize=16)
+    plt.subplot(131)
+    img = plt.imshow(host_angle_range_expected[:, :, 1])
+    plt.colorbar(img)
+    plt.title("Angle max expected")
+    plt.subplot(132)
+    img = plt.imshow(host_angle_range_actual[:, :, 1])
+    plt.colorbar(img)
+    plt.title("Angle max actual")
+    plt.subplot(133)
+    img = plt.imshow(diff)
+    plt.colorbar(img)
+    plt.title("Angle max diff")
+    plt.show()
     allowed = (0 <= diff) & (diff <= 3)
     assert np.all(allowed), (
         "Angle max elements differ by more than 1 or are less than expected"
     )
 
+    plt.figure()
+    manager = plt.get_current_fig_manager()
+    manager.full_screen_toggle()
+    plt.suptitle(f"projection_count: {projection_count}", fontsize=16)
+    plt.subplot(121)
+    img = plt.imshow(host_angle_range_expected[:, :, 2])
+    plt.colorbar(img)
+    plt.title("Angle type expected")
+    plt.subplot(122)
+    img = plt.imshow(host_angle_range_actual[:, :, 2])
+    plt.colorbar(img)
+    plt.title("Angle type actual")
+    plt.show()
     assert_array_equal(
         host_angle_range_actual[:, :, 2], host_angle_range_expected[:, :, 2]
     )

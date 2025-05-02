@@ -103,51 +103,117 @@ class RecToolsDIRCuPy(RecToolsDIR):
         theta: xp.ndarray,
         detector_width: int,
         projection_count: int,
-        oversampled_grid_size: int,
+        interpolation_filter_half_size: int,
         center_size: int,
+        angle_range_expected: xp.ndarray | None = None,
     ):
+        print(f"n: {detector_width}, m: {interpolation_filter_half_size}, m + n: {detector_width + interpolation_filter_half_size}")
+        print(f"center_size: {center_size}, center_half_size: {center_size // 2}")
+
         gather_kernel_center_prune_atan(
             (int(np.ceil(center_size / 256)), center_size, 1),
             (256, 1, 1),
             (
                 angle_range,
                 theta,
-                np.int32(oversampled_grid_size),
+                np.int32(interpolation_filter_half_size),
                 np.int32(center_size),
                 np.int32(detector_width),
                 np.int32(projection_count),
             ),
         )
 
-        gather_kernel_center_prune(
-            grid=(1, int(np.ceil(center_size / 8)), 4 * oversampled_grid_size),
-            block=(32, 8, 1),
-            args=(
-                angle_range,
-                theta,
-                np.int32(oversampled_grid_size),
-                np.int32(center_size),
-                np.int32(center_size),
-                np.int32(4 * oversampled_grid_size),
-                np.int32(detector_width),
-                np.int32(projection_count),
-            ),
-        )
+        angle_range_0 = angle_range.get()
 
-        gather_kernel_center_prune(
-            grid=(1, _CENTER_SIZE_MIN / 8, _CENTER_SIZE_MIN),
-            block=(32, 8, 1),
-            args=(
-                angle_range,
-                theta,
-                np.int32(oversampled_grid_size),
-                np.int32(center_size),
-                np.int32(_CENTER_SIZE_MIN),
-                np.int32(_CENTER_SIZE_MIN),
-                np.int32(detector_width),
-                np.int32(projection_count),
-            ),
-        )
+        # gather_kernel_center_prune(
+        #     grid=(1, int(np.ceil(center_size / 8)), 4 * interpolation_filter_half_size),
+        #     block=(32, 8, 1),
+        #     args=(
+        #         angle_range,
+        #         theta,
+        #         np.int32(interpolation_filter_half_size),
+        #         np.int32(center_size),
+        #         np.int32(center_size),
+        #         np.int32(4 * interpolation_filter_half_size),
+        #         np.int32(detector_width),
+        #         np.int32(projection_count),
+        #     ),
+        # )
+
+        angle_range_1 = angle_range.get()
+
+        # gather_kernel_center_prune(
+        #     grid=(1, _CENTER_SIZE_MIN / 8, _CENTER_SIZE_MIN),
+        #     block=(32, 8, 1),
+        #     args=(
+        #         angle_range,
+        #         theta,
+        #         np.int32(interpolation_filter_half_size),
+        #         np.int32(center_size),
+        #         np.int32(_CENTER_SIZE_MIN),
+        #         np.int32(_CENTER_SIZE_MIN),
+        #         np.int32(detector_width),
+        #         np.int32(projection_count),
+        #     ),
+        # )
+
+        angle_range_2 = angle_range.get()
+
+        import matplotlib.pyplot as plt
+        plt.figure()
+        manager = plt.get_current_fig_manager()
+        manager.full_screen_toggle()
+        plt.suptitle(f"projection_count: {projection_count}\ntheta_min: {theta[0]} - theta_max: {theta[-1]}", fontsize=16)
+        if angle_range_expected is not None:
+            plt.subplot(431)
+            img = plt.imshow(angle_range_expected[:, :, 0].get())
+            plt.colorbar(img)
+            plt.title("Expected Angle min")
+            plt.subplot(432)
+            img = plt.imshow(angle_range_expected[:, :, 1].get())
+            plt.colorbar(img)
+            plt.title("Expected Angle max")
+            plt.subplot(433)
+            img = plt.imshow(angle_range_expected[:, :, 2].get())
+            plt.colorbar(img)
+            plt.title("Expected Angle type")
+        plt.subplot(434)
+        img = plt.imshow(angle_range_0[:, :, 0])
+        plt.colorbar(img)
+        plt.title("0 Angle min")
+        plt.subplot(435)
+        img = plt.imshow(angle_range_0[:, :, 1])
+        plt.colorbar(img)
+        plt.title("0 Angle max")
+        plt.subplot(436)
+        img = plt.imshow(angle_range_0[:, :, 2])
+        plt.colorbar(img)
+        plt.title("0 Angle type")
+        plt.subplot(437)
+        img = plt.imshow(angle_range_1[:, :, 0])
+        plt.colorbar(img)
+        plt.title("1 Angle min")
+        plt.subplot(438)
+        img = plt.imshow(angle_range_1[:, :, 1])
+        plt.colorbar(img)
+        plt.title("1 Angle max")
+        plt.subplot(439)
+        img = plt.imshow(angle_range_1[:, :, 2])
+        plt.colorbar(img)
+        plt.title("1 Angle type")
+        plt.subplot(4, 3, 10)
+        img = plt.imshow(angle_range_2[:, :, 0])
+        plt.colorbar(img)
+        plt.title("2 Angle min")
+        plt.subplot(4, 3, 11)
+        img = plt.imshow(angle_range_2[:, :, 1])
+        plt.colorbar(img)
+        plt.title("2 Angle max")
+        plt.subplot(4, 3, 12)
+        img = plt.imshow(angle_range_2[:, :, 2])
+        plt.colorbar(img)
+        plt.title("2 Angle type")
+        plt.show()
 
     def BACKPROJ(self, projdata: xp.ndarray, **kwargs) -> xp.ndarray:
         """Module to perform back-projection of 2d/3d data as a cupy array
