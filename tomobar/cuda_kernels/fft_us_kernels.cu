@@ -190,11 +190,28 @@ int __device__ binary_search(float *theta, int nproj, float value) {
   return low;
 }
 
+float angle_of_point(float2 point, double length, bool is_positive_theta)
+{
+  double acosangle  = acos((double)point.x/length);
+  double angle;
+  if (is_positive_theta)
+    angle = point.y < 0.0f ? (M_PI - acosangle) : acosangle;
+  else
+    angle = point.y > 0.0f ? -(M_PI - acosangle) : -acosangle;
+  return angle;
+}
+
+float angle_of_point_raw(float2 point, bool is_positive_theta)
+{
+  float length_2 = point.x * point.x + point.y * point.y;
+  double length = sqrt(length_2);
+  return angle_of_point(point, length, is_positive_theta);
+}
+
 extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, float *theta, 
                                                            int m, int center_size,
                                                            int n, int nproj)
 {
-
   const int center_half_size = center_size/2;
 
   int thread_x = blockDim.x * blockIdx.x + threadIdx.x;
@@ -219,7 +236,8 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
   // Theta direction
   int theta_min_index = 0;
   int theta_max_index = (nproj-1);
-  
+  bool is_positive_theta = theta[theta_min_index] >= 0.0f;
+
   if( radius_2 >= length_2 ) {
     angle_range[0] = theta_min_index;
     angle_range[1] = theta_max_index;
@@ -227,26 +245,13 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
   } else {
     double radius     = sqrt(radius_2);
     double length     = sqrt(length_2);
-    double acosangle  = acos((double)point.x/length);
-    double angle;
-    if (theta[theta_min_index] >= 0.0f)
-      angle = point.y < 0.f ? (M_PI - acosangle) : acosangle;
-    else
-      angle = point.y > 0.f ? -(M_PI - acosangle) : -acosangle;
     float angle_delta = atan(radius/length);
 
+    double angle = angle_of_point(point, length, is_positive_theta);  
     float angle_start = angle - angle_delta;
     float angle_end   = angle + angle_delta;
 
-    // float angle_range_delta = fabsf(tan(radius/0.5f));
-    float angle_range_min = theta[theta_min_index];// - angle_range_delta;
-    float angle_range_max = theta[theta_max_index];// + angle_range_delta;
-
     if( fabsf(point.y) > radius ) {
-        //if( abs(double((n+m) - ty) / double(2 * n)) > radius ) {
-
-    //if( angle_range_min < angle_min && angle_min < angle_range_max &&
-    //    angle_range_min < angle_max && angle_max < angle_range_max ) {
       angle_range[0] = binary_search<true, false>(theta, nproj, angle_start);
       angle_range[1] = binary_search<true, true>(theta, nproj, angle_end);
 
@@ -254,11 +259,22 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
       angle_range[1] = min(nproj - 1, angle_range[1] + 1);
       angle_range[2] = 1;
     } else {
-      angle_start = angle_start < angle_range_min ? (angle_start + M_PI) : angle_start;
-      angle_end   = angle_end   < angle_range_min ? (angle_end   + M_PI) : angle_end;
+      float2 normal_vector = make_float2(-point.y, point.x);
+      length_2 = normal_vector.x * normal_vector.x + normal_vector.y * normal_vector.y;
+      length = sqrt(length_2);
+      normal_vector = make_float2(normal_vector.x / length, normal_vector.y / length);
+      float2 scaled_normal_vector = make_float2(normal_vector.x * radius, normal_vector.y * radius);
 
-      angle_start = angle_start > angle_range_max ? (angle_start - M_PI) : angle_start;
-      angle_end   = angle_end   > angle_range_max ? (angle_end   - M_PI) : angle_end;
+      float2 rotated_point_a = make_float2(point.x + scaled_normal_vector.x, point.y + scaled_normal_vector.y);
+      rotated_point_a = make_float2(-rotated_point_a.x, -rotated_point_a.y);
+      float rotated_point_a_angle = angle_of_point_raw(rotated_point_a, is_positive_theta);
+
+      float2 rotated_point_b = make_float2(point.x - scaled_normal_vector.x, point.y - scaled_normal_vector.y);
+      rotated_point_b = make_float2(-rotated_point_b.x, -rotated_point_b.y);
+      float rotated_point_b_angle = angle_of_point_raw(rotated_point_b, is_positive_theta);
+
+      angle_start = rotated_point_a_angle;
+      angle_end = rotated_point_b_angle;
 
       int index_min = binary_search<true, true>(theta, nproj, angle_start);
       int index_max = binary_search<true, false>(theta, nproj, angle_end);
@@ -305,9 +321,9 @@ extern "C" __global__ void gather_kernel_center_prune(int* angle_range, float *t
   angle_range += (unsigned long long)3 * (thread_y + (center_size - center_size_x)/2  + ((center_size - center_size_y)/2 + thread_z) * center_size);
   // Point coordinates
   float2 point = make_float2(float(tx - (n+m)) / float(2 * n), float((n+m) - ty) / float(2 * n));
-
+  
   unsigned thread_mask = FULL_MASK >> (32 - thread_x);
-
+  
   // Result value
   int valid_index = 0;
   int proj_valid_index_min = nproj;
@@ -318,20 +334,20 @@ extern "C" __global__ void gather_kernel_center_prune(int* angle_range, float *t
   for (int proj_index = thread_x; proj_index < nproj_ceil; proj_index +=32) {
     float sintheta, costheta;
     __sincosf(theta[proj_index%nproj], &sintheta, &costheta);
-
+    
     float polar_radius   = 0.5;
     float polar_radius_2 = polar_radius * polar_radius;
-
+    
     float2 vector_polar = make_float2(polar_radius * costheta, polar_radius * sintheta);
     float2 vector_point = make_float2(point.x,  point.y);
-
+    
     float dot = vector_polar.x * vector_point.x + vector_polar.y * vector_point.y;
     float2 mid_point = make_float2(dot * vector_polar.x / polar_radius_2, 
-                                   dot * vector_polar.y / polar_radius_2); 
-
-    float distance_2 = (mid_point.x - vector_point.x) * (mid_point.x - vector_point.x) +
-                       (mid_point.y - vector_point.y) * (mid_point.y - vector_point.y);
-  
+      dot * vector_polar.y / polar_radius_2); 
+      
+      float distance_2 = (mid_point.x - vector_point.x) * (mid_point.x - vector_point.x) +
+      (mid_point.y - vector_point.y) * (mid_point.y - vector_point.y);
+      
     unsigned mask = __ballot_sync(FULL_MASK, radius_2 >= distance_2 && proj_index < nproj);
     
     if( proj_index < nproj ) {
