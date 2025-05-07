@@ -240,10 +240,8 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
     float angle_start = angle - angle_delta;
     float angle_end   = angle + angle_delta;
 
-    float angle_range_delta = fabsf(tan(radius/0.5f));
-
-    float angle_range_min = theta[theta_min_index] - angle_range_delta;
-    float angle_range_max = theta[theta_max_index] + angle_range_delta;
+    float angle_range_min = theta[theta_min_index];
+    float angle_range_max = theta[theta_max_index];
 
     if( fabsf(point.y) > radius ) {
     //if( abs(double((n+m) - ty) / double(2 * n)) > radius ) {
