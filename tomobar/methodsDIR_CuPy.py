@@ -126,23 +126,6 @@ class RecToolsDIRCuPy(RecToolsDIR):
         angle_range_0 = angle_range.get()
 
         # gather_kernel_center_prune(
-        #     grid=(1, int(np.ceil(center_size / 8)), 4 * interpolation_filter_half_size),
-        #     block=(32, 8, 1),
-        #     args=(
-        #         angle_range,
-        #         theta,
-        #         np.int32(interpolation_filter_half_size),
-        #         np.int32(center_size),
-        #         np.int32(center_size),
-        #         np.int32(4 * interpolation_filter_half_size),
-        #         np.int32(detector_width),
-        #         np.int32(projection_count),
-        #     ),
-        # )
-
-        angle_range_1 = angle_range.get()
-
-        # gather_kernel_center_prune(
         #     grid=(1, _CENTER_SIZE_MIN / 8, _CENTER_SIZE_MIN),
         #     block=(32, 8, 1),
         #     args=(
@@ -157,7 +140,7 @@ class RecToolsDIRCuPy(RecToolsDIR):
         #     ),
         # )
 
-        angle_range_2 = angle_range.get()
+        angle_range_1 = angle_range.get()
 
         import matplotlib.pyplot as plt
         plt.figure()
@@ -165,54 +148,42 @@ class RecToolsDIRCuPy(RecToolsDIR):
         manager.full_screen_toggle()
         plt.suptitle(f"projection_count: {projection_count}\ntheta_min: {theta[0]} - theta_max: {theta[-1]}", fontsize=16)
         if angle_range_expected is not None:
-            plt.subplot(431)
+            plt.subplot(331)
             img = plt.imshow(angle_range_expected[:, :, 0].get())
             plt.colorbar(img)
             plt.title("Expected Angle min")
-            plt.subplot(432)
+            plt.subplot(332)
             img = plt.imshow(angle_range_expected[:, :, 1].get())
             plt.colorbar(img)
             plt.title("Expected Angle max")
-            plt.subplot(433)
+            plt.subplot(333)
             img = plt.imshow(angle_range_expected[:, :, 2].get())
             plt.colorbar(img)
             plt.title("Expected Angle type")
-        plt.subplot(434)
+        plt.subplot(334)
         img = plt.imshow(angle_range_0[:, :, 0])
         plt.colorbar(img)
         plt.title("0 Angle min")
-        plt.subplot(435)
+        plt.subplot(335)
         img = plt.imshow(angle_range_0[:, :, 1])
         plt.colorbar(img)
         plt.title("0 Angle max")
-        plt.subplot(436)
+        plt.subplot(336)
         img = plt.imshow(angle_range_0[:, :, 2])
         plt.colorbar(img)
         plt.title("0 Angle type")
-        plt.subplot(437)
+        plt.subplot(337)
         img = plt.imshow(angle_range_1[:, :, 0])
         plt.colorbar(img)
         plt.title("1 Angle min")
-        plt.subplot(438)
+        plt.subplot(338)
         img = plt.imshow(angle_range_1[:, :, 1])
         plt.colorbar(img)
         plt.title("1 Angle max")
-        plt.subplot(439)
+        plt.subplot(339)
         img = plt.imshow(angle_range_1[:, :, 2])
         plt.colorbar(img)
         plt.title("1 Angle type")
-        plt.subplot(4, 3, 10)
-        img = plt.imshow(angle_range_2[:, :, 0])
-        plt.colorbar(img)
-        plt.title("2 Angle min")
-        plt.subplot(4, 3, 11)
-        img = plt.imshow(angle_range_2[:, :, 1])
-        plt.colorbar(img)
-        plt.title("2 Angle max")
-        plt.subplot(4, 3, 12)
-        img = plt.imshow(angle_range_2[:, :, 2])
-        plt.colorbar(img)
-        plt.title("2 Angle type")
         plt.show()
 
     def BACKPROJ(self, projdata: xp.ndarray, **kwargs) -> xp.ndarray:

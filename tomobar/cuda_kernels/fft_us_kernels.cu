@@ -266,11 +266,57 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
       float2 scaled_normal_vector = make_float2(normal_vector.x * radius, normal_vector.y * radius);
 
       float2 rotated_point_a = make_float2(point.x + scaled_normal_vector.x, point.y + scaled_normal_vector.y);
-      rotated_point_a = make_float2(-rotated_point_a.x, -rotated_point_a.y);
-      float rotated_point_a_angle = angle_of_point_raw(rotated_point_a, is_positive_theta);
-
       float2 rotated_point_b = make_float2(point.x - scaled_normal_vector.x, point.y - scaled_normal_vector.y);
-      rotated_point_b = make_float2(-rotated_point_b.x, -rotated_point_b.y);
+
+      if (point.x >= 0.0f && point.y >= 0.0f)
+      {
+        if (theta[theta_min_index] >= 0.0f)
+        {
+          rotated_point_b = make_float2(-rotated_point_b.x, -rotated_point_b.y);
+        }
+        else
+        {
+          rotated_point_b = make_float2(-rotated_point_b.x, -rotated_point_b.y);
+        }
+      }
+
+      if (point.x >= 0.0f && point.y <= 0.0f)
+      {
+        if (theta[theta_min_index] >= 0.0f)
+        {
+          rotated_point_a = make_float2(-rotated_point_a.x, -rotated_point_a.y);
+        }
+        else
+        {
+          rotated_point_a = make_float2(-rotated_point_a.x, -rotated_point_a.y);
+        }
+      }
+
+      if (point.x <= 0.0f && point.y >= 0.0f)
+      {
+        if (theta[theta_min_index] >= 0.0f)
+        {
+          rotated_point_a = make_float2(-rotated_point_a.x, -rotated_point_a.y);
+        }
+        else
+        {
+          rotated_point_a = make_float2(-rotated_point_a.x, -rotated_point_a.y);
+        }
+      }
+
+      if (point.x <= 0.0f && point.y <= 0.0f)
+      {
+        if (theta[theta_min_index] >= 0.0f)
+        {
+          rotated_point_b = make_float2(-rotated_point_b.x, -rotated_point_b.y);
+        }
+        else
+        {
+          rotated_point_b = make_float2(-rotated_point_b.x, -rotated_point_b.y);
+        }
+      }
+
+      float rotated_point_a_angle = angle_of_point_raw(rotated_point_a, is_positive_theta);
       float rotated_point_b_angle = angle_of_point_raw(rotated_point_b, is_positive_theta);
 
       angle_start = rotated_point_a_angle;
@@ -287,6 +333,8 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
         angle_range[1] = index_min;
       }
 
+      angle_range[0] = max(0, angle_range[0] - 1);
+      angle_range[1] = min(nproj - 1, angle_range[1] + 1);
       angle_range[2] = 0;
     }
   }
