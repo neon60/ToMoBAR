@@ -120,21 +120,6 @@ class RecToolsDIRCuPy(RecToolsDIR):
         )
 
         gather_kernel_center_prune(
-            grid=(1, int(np.ceil(center_size / 8)), 4 * interpolation_filter_half_size),
-            block=(32, 8, 1),
-            args=(
-                angle_range,
-                theta,
-                np.int32(interpolation_filter_half_size),
-                np.int32(center_size),
-                np.int32(center_size),
-                np.int32(4 * interpolation_filter_half_size),
-                np.int32(detector_width),
-                np.int32(projection_count),
-            ),
-        )
-
-        gather_kernel_center_prune(
             grid=(1, _CENTER_SIZE_MIN / 8, _CENTER_SIZE_MIN),
             block=(32, 8, 1),
             args=(
