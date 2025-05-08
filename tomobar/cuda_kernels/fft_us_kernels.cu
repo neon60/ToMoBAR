@@ -190,11 +190,6 @@ int __device__ binary_search(float *theta, int nproj, float value) {
   return low;
 }
 
-int2 widen_angle_range(int angle_range_min, int angle_range_max, int nproj)
-{
-  return make_int2(max(0, angle_range_min - 1), min(nproj - 1, angle_range_max + 1));
-}
-
 extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, float *theta, 
                                                            int m, int center_size,
                                                            int n, int nproj)
@@ -256,16 +251,27 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
         binary_search<true, true>(theta, nproj, angle_end):
         binary_search<false, false>(theta, nproj, angle_end);
 
-      int2 widened_angle_range = widen_angle_range(angle_range[0], angle_range[1], nproj);
-      angle_range[0] = widened_angle_range.x;
-      angle_range[1] = widened_angle_range.y;
       angle_range[2] = 1;
     } else {
-      angle_start = angle_start < angle_range_min ? (angle_start + M_PI) : angle_start;
-      angle_end   = angle_end   < angle_range_min ? (angle_end   + M_PI) : angle_end;
+      if (point.x > 0.0f && point.y > 0.0f)
+      {
+        angle_start += M_PI;
+      }
 
-      angle_start = angle_start > angle_range_max ? (angle_start - M_PI) : angle_start;
-      angle_end   = angle_end   > angle_range_max ? (angle_end   - M_PI) : angle_end;
+      if (point.x > 0.0f && point.y <= 0.0f)
+      {
+        angle_end -= M_PI;
+      }
+
+      if (point.x < 0.0f && point.y > 0.0f)
+      {
+        angle_end -= M_PI;
+      }
+
+      if (point.x < 0.0f && point.y <= 0.0f)
+      {
+        angle_start += M_PI;
+      }
 
       int index_min = ascending ? 
         binary_search<true, true>(theta, nproj, angle_start):
@@ -282,11 +288,11 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
         angle_range[1] = index_min;
       }
 
-      int2 widened_angle_range = widen_angle_range(angle_range[0], angle_range[1], nproj);
-      angle_range[0] = widened_angle_range.x;
-      angle_range[1] = widened_angle_range.y;
       angle_range[2] = 0;
     }
+    
+    angle_range[0] = max(0, angle_range[0] - 1);
+    angle_range[1] = min(nproj - 1, angle_range[1] + 1);
   }
 }
 
