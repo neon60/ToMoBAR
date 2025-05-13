@@ -190,7 +190,7 @@ int __device__ binary_search(float *theta, int nproj, float value) {
   return low;
 }
 
-extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, float *theta, 
+extern "C" __global__ void gather_kernel_center_angle_based_prune(int* angle_range, float *theta, 
                                                            int m, int center_size,
                                                            int n, int nproj)
 {
@@ -235,7 +235,7 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
       angle = point.y < 0.f ? (M_PI - acosangle) : acosangle;
     else
       angle = point.y > 0.f ? -(M_PI - acosangle) : -acosangle;
-    float angle_delta = ascending ? atan(radius/length) : -atan(radius/length);
+    float angle_delta = ascending ? asin(radius/length) : -asin(radius/length);
 
     float angle_start = angle - angle_delta;
     float angle_end   = angle + angle_delta;
@@ -253,25 +253,11 @@ extern "C" __global__ void gather_kernel_center_prune_atan(int* angle_range, flo
 
       angle_range[2] = 1;
     } else {
-      if (point.x > 0.0f && point.y > 0.0f)
-      {
-        angle_start += M_PI;
-      }
+      angle_start = angle_start < angle_range_min ? (angle_start + M_PI) : angle_start;
+      angle_end   = angle_end   < angle_range_min ? (angle_end   + M_PI) : angle_end;
 
-      if (point.x > 0.0f && point.y <= 0.0f)
-      {
-        angle_end -= M_PI;
-      }
-
-      if (point.x < 0.0f && point.y > 0.0f)
-      {
-        angle_end -= M_PI;
-      }
-
-      if (point.x < 0.0f && point.y <= 0.0f)
-      {
-        angle_start += M_PI;
-      }
+      angle_start = angle_start > angle_range_max ? (angle_start - M_PI) : angle_start;
+      angle_end   = angle_end   > angle_range_max ? (angle_end   - M_PI) : angle_end;
 
       int index_min = ascending ? 
         binary_search<true, true>(theta, nproj, angle_start):
