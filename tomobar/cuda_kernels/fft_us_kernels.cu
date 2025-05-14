@@ -235,7 +235,7 @@ extern "C" __global__ void gather_kernel_center_angle_based_prune(int* angle_ran
       angle = point.y < 0.f ? (M_PI - acosangle) : acosangle;
     else
       angle = point.y > 0.f ? -(M_PI - acosangle) : -acosangle;
-    float angle_delta = ascending ? asin(radius/length) : -asin(radius/length);
+    float angle_delta = ascending ? asinf(radius/length) : -asinf(radius/length);
 
     float angle_start = angle - angle_delta;
     float angle_end   = angle + angle_delta;
